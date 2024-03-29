@@ -15,61 +15,159 @@ import datetime
 
 '''
 ###############
-def connectToKeithley(keithleyAddress='GPIB0::22::INSTR'):
-    rm = pyvisa.ResourceManager()
-    keithley = rm.open_resource('ASRL13::INSTR')
-    keithley.baud_rate=57600
+def connectToKeithley(keithleyAddress=['GPIB0::22::INSTR']):
+	'''
+	This creates a Keithley object with which to interact with.
+	Attempt to connect to a Keithley, then send an ID query to confirm connection. If this fails, send an error message to the terminal and terminate the program.
+	'''
+	if keithleyAddress==['Test']:
+		message='Keithley Code running in Test Mode. All of the following data is generated not measured.'
+# 		print ('Keithley Code running in Test Mode. All of the following data is generated not measured.')
+		from scipy.interpolate import interp1d as interp
+		global datetime
+		import datetime
+		global time
+		import time
+		global sleepTime
+		sleepTime = 0.001
+		global start
+		start = datetime.datetime.now()
+		global k
+# 		k = 8.617e-5
+		k = 1.38e-23
+		global T0
+		T0 = 273.15
+		global Iph
+		Iph = 0
+		global q
+		q = 1.602e-19
 
-    print(keithley.query('*IDN?\r'))
-    if(keithley.query('*IDN?\r').has("2651A") == true):
-        print("2600")
-        keithley.baud_rate=57600
-        keithley.read_termination = '\n'
-        keithley.write('smua.reset()')  # Reset the instrument
+		def testIV(V,Iph,I0=1e-10,T=25,VF=1.1,VR=1,V0=0.6):
+# 			I = -Iph + I0*(np.exp((V-VF+V0)/(k*(T+T0)))-1) + 0.01*np.random.uniform(-1,1)
+# 			I = -Iph + I0*(np.exp(q*(V-VF+V0)/(k*(T+T0)))-1)# + np.random.uniform(-.0001,.0001)
+# 			print(Iph)
+			I = -Iph + I0*(np.exp(q*(V-VF+V0)/(1.4*k*(T+T0)))-1) + np.random.uniform(-.00005,.00005)
+			return I
 
-        keithley.write('smua.sense = smua.SENSE_REMOTE')  # Enable 4-wire sense
-        if keithleyAddress == 'Test':
-            return 'Test Mode'  # Simulated mode for testing without actual hardware
-        message = "Connected"
-        return [message, keithley]
-    else:
-     if(keithley.query('*IDN?\r').contains("Model 24")):
-        print("2400")
+		def testIVinv(I,Iph,I0=1e-10,T=25,VF=1.1,VR=1,V0=0.6):
+			V = 1.4*k*(T+T0)*np.log(1+((I+Iph)/I0))/q +VF-V0+ np.random.uniform(-.00005,.00005)
+			return V
+
+		global getI
+		getI = testIV
+
+		global getV
+		getV = testIVinv
+		return [message,keithleyAddress[0]]
+
+	success=0
+	for item in keithleyAddress:
+		try:
+			global rm
+            global modelNum
+			rm = pyvisa.ResourceManager()
+# 			print(rm.list_resources())
+			print ('Attempting to connect to keithley.')
+			keithleyObject = rm.open_resource(item)
+			keithleyObject.baud_rate=57600
+
+            #if it is a 2600 series keithley
+            if(keithleyObject.query('*IDN?\n').contains("Model 26")):
+                    print("2600")
+                    keithley.baud_rate=57600
+                    keithley.read_termination = '\n'
+                    keithley.write('smua.reset()')  # Reset the instrument
+                    keithley.write('smua.sense = smua.SENSE_REMOTE')  # Enable 4-wire sense
+                    modelNum=2600
+                    print ('Keithley setup done, '+ item)
+                    message='Keithley setup done, '+ item
+                    success=1
+                else:
+                    if(keithleyObject.query('*IDN?\r').contains("Model 24")):
+                        keithleyObject.read_termination = '\r'
+			            print (keithleyObject.query('*IDN?\r'))
+                        keithleyObject.write('*RST')
+                        keithleyObject.write('SENS:FUNC:CONC OFF')
+                        keithleyObject.write('SYST:RSEN ON')
+                        keithleyObject.write('ROUT:TERM REAR')
+                        # keithleyObject.write('ROUT:TERM FRON')
+                        print ('Keithley setup done, '+ item)
+                        message='Keithley setup done, '+ item
+                        modelNum=2400
+                        success=1
+			break
+		except:
+			print ('Could not establish connection with Keithley on: '+ item)
+			message='Could not establish connection with Keithley on: '+ item
+			
+	if success:
+		return [message,keithleyObject]
+	else:
+		print ('\nCheck connection with Keithley')
+# 		sys.exit()
+            
 #Keithley Instruments Inc., Model 2651A, 4405857, 1.2.0
 def shutdownKeithley(keithley):
     if keithley == 'Test':
         print('Shutdown in Test Mode')
         return
-    keithley.write('smua.source.output = smua.OUTPUT_OFF')
+    if modelNum==2400:
+        keithley.write('OUTP OFF')
+    if modelNum==2600:
+        keithley.write('smua.source.output = smua.OUTPUT_OFF')
     keithley.close()
 
 def openShutter(keithley):
-    if keithley == 'Test':
-        print('Open Shutter in Test Mode')
-        return
+    if keithleyObject == 'Test':
+		global Iph
+		activeArea = 1 #cm^2
+		simulatedJsc = 22 #mA/cm^2
+		photoCurrent = simulatedJsc*activeArea/1000 + np.random.uniform(-.00050,.0005)
+# 		print(photoCurrent)
+		Iph = photoCurrent #Units are mAmps
+		return
     # Implement the method to open the shutter using digital IO or other means if required.
 
 def closeShutter(keithley):
-    if keithley == 'Test':
-        print('Close Shutter in Test Mode')
-        return
+	if keithleyObject == 'Test':
+		global Iph
+		Iph = 0
+		return
     # Implement the method to close the shutter using digital IO or other means if required.
 
 def prepareVoltage(keithley, NPLC=1, voltlimit=10, polarity='pin'):
     if keithley == 'Test':
         print('Prepare Voltage in Test Mode')
         return
-    keithley.write('smua.source.func = smua.OUTPUT_DCAMPS')
-    keithley.write('smua.source.autorangei = smua.AUTORANGE_ON')
-    keithley.write('smua.measure.v()')
+    if polarity == 'pin':
+		voltlimit *= -1
+    if modelNum==2600:
+        keithley.write('smua.source.func = smua.OUTPUT_DCAMPS')
+        keithley.write('smua.source.autorangei = smua.AUTORANGE_ON')
+        keithley.write('smua.measure.v()')
 
 
-    keithley.write(f'smua.source.limitv = {voltlimit}')
-    keithley.write('smua.source.autorangev = smua.AUTORANGE_ON')
+        keithley.write(f'smua.source.limitv = {voltlimit}')
+        keithley.write('smua.source.autorangev = smua.AUTORANGE_ON')
 
-    keithley.write(f'smua.measure.nplc = {NPLC}')
-    keithley.write(f'smua.trigger.count = 1')    
-    keithley.write('smua.source.output = smua.OUTPUT_ON')
+        keithley.write(f'smua.measure.nplc = {NPLC}')
+        keithley.write(f'smua.trigger.count = 1')    
+        keithley.write('smua.source.output = smua.OUTPUT_ON')
+    if modelNum==2400:
+        keithleyObject.write('SOUR:FUNC CURR')
+        keithleyObject.write('SOUR:CURR:MODE FIXED')
+        keithleyObject.write('SOUR:CURR:RANG:AUTO ON')
+        keithleyObject.write('SENS:FUNC "VOLT"')
+        keithleyObject.write('SENS:VOLT:PROT {:.3f}'.format(voltlimit))
+        keithleyObject.write('SENS:VOLT:RANG:AUTO ON')
+        keithleyObject.write('SENS:VOLT:NPLC {:.3f}'.format(NPLC))
+        keithleyObject.write('TRIG:COUN 1')
+        keithleyObject.write('OUTP ON')
+
+	if keithleyObject == 'Test':
+		return
+	# keithleyObject.write('*RST')
+
 
 def measureVoltage(keithleyObject, current=0, n=1, polarity='pin'):
     if polarity == 'pin':
@@ -77,18 +175,29 @@ def measureVoltage(keithleyObject, current=0, n=1, polarity='pin'):
  
     rawDataArray = []
     # Assuming the keithleyObject can execute Lua commands and return the results
-    for _ in range(n):
-        measureVoltageCmd = 'print(smua.measure.v())\n'
-        keithleyObject.write(measureVoltageCmd)
-        voltageMeasurement = keithleyObject.read()
-        rawDataArray.append(float(voltageMeasurement))
- 
-    if polarity == 'pin':
-        rawDataArray = [-x for x in rawDataArray]
- 
-    # Creating a 2D numpy array, with each measurement as a new column in the single row
-    data = np.array([rawDataArray])
- 
+    if modelNum==2600:
+        for _ in range(n):
+            measureVoltageCmd = 'print(smua.measure.v())\n'
+            keithleyObject.write(measureVoltageCmd)
+            voltageMeasurement = keithleyObject.read()
+            rawDataArray.append(float(voltageMeasurement))
+    
+        if polarity == 'pin':
+            rawDataArray = [-x for x in rawDataArray]
+    
+        # Creating a 2D numpy array, with each measurement as a new column in the single row
+        data = np.array([rawDataArray])
+    if modelNum==2400:
+        keithleyObject.write('SOUR:CURR:LEV {:.3f}'.format(current))
+        rawData = keithleyObject.query_ascii_values('READ?')
+        rawDataArray = np.array(rawData)
+        for i in range(n-1):
+            rawData = keithleyObject.query_ascii_values('READ?')
+            rawDataArray = np.vstack((rawDataArray,rawData))
+        data = rawDataArray
+    # 	print(data)
+        if polarity == 'pin':
+            data[:,0:2] *= -1
     return data
 
 def prepareCurrent(keithleyObject, NPLC=1, currentlimit=1e-2, polarity='pin'):
@@ -102,35 +211,24 @@ def prepareCurrent(keithleyObject, NPLC=1, currentlimit=1e-2, polarity='pin'):
     if keithleyObject == 'Test':
         return
     
-    # Resetting the instrument to a known state is generally good practice, but commented out for safety
-    # keithleyObject.write('reset()')
-    
-    # Set source function to voltage
-    keithleyObject.write('smua.source.func = smua.OUTPUT_DCVOLTS\n')
-    
-    # Set the voltage source mode to fixed
-    # This specific mode setting is implicit in setting the source level and not required as a separate command in TSP
-    
-    # Enable auto range for sourcing voltage
-    keithleyObject.write('smua.source.autorangev = smua.AUTORANGE_ON\n')
-    
-    # Set the measurement function to current
-    # For Keithley TSP, measurement function is set automatically based on the measure command used
-    
-    # Set the compliance (protection) limit for current measurement
-    keithleyObject.write(f'smua.source.limiti = {currentlimit}\n')
-    
-    # Enable auto range for current measurement
-    keithleyObject.write('smua.measure.autorangei = smua.AUTORANGE_ON\n')
-    
-    # Set the NPLC for current measurement
-    keithleyObject.write(f'smua.measure.nplc = {NPLC}\n')
-    
-    # Set trigger count to 1
-    keithleyObject.write('smua.trigger.count = 1\n')
-    
-    # Turn the output on
-    keithleyObject.write('smua.source.output = smua.OUTPUT_ON\n')
+    if modelNum==2600:
+        keithleyObject.write('smua.source.func = smua.OUTPUT_DCVOLTS\n')
+        keithleyObject.write('smua.source.autorangev = smua.AUTORANGE_ON\n')
+        keithleyObject.write(f'smua.source.limiti = {currentlimit}\n')
+        keithleyObject.write('smua.measure.autorangei = smua.AUTORANGE_ON\n')
+        keithleyObject.write(f'smua.measure.nplc = {NPLC}\n')
+        keithleyObject.write('smua.trigger.count = 1\n')
+        keithleyObject.write('smua.source.output = smua.OUTPUT_ON\n')
+    if modelNum==2400:
+        keithleyObject.write('SOUR:FUNC VOLT')
+        keithleyObject.write('SOUR:VOLT:MODE FIXED')
+        keithleyObject.write('SOUR:VOLT:RANG:AUTO ON')
+        keithleyObject.write('SENS:FUNC "CURR"')
+        keithleyObject.write('SENS:CURR:PROT {:.3f}'.format(currentlimit))
+        keithleyObject.write('SENS:CURR:RANG:AUTO ON')
+        keithleyObject.write('SENS:CURR:NPLC {:.3f}'.format(NPLC))
+        keithleyObject.write('TRIG:COUN 1')
+        keithleyObject.write('OUTP ON')
 
 
 def measureCurrent(keithleyObject, voltage=0, n=1, polarity='pin'):
@@ -147,68 +245,115 @@ def measureCurrent(keithleyObject, voltage=0, n=1, polarity='pin'):
         # Simulated logic for testing environment
         pass
     else:
-        for i in range(n):
-            # Assuming keithleyObject.write() sends a Lua command
-            # and keithleyObject.read() reads its output
+        if modelNum==2600:
+            for i in range(n):
+                keithleyObject.write(f'smua.source.levelv = {voltage}\n')
+                keithleyObject.write('smua.source.output = smua.OUTPUT_ON\n')
+                keithleyObject.write('print(smua.measure.i())\n')
+                currentMeasurement = float(keithleyObject.read())
+                keithleyObject.write('smua.source.output = smua.OUTPUT_OFF\n')
+                voltageValue = -voltage if polarity == 'pin' else voltage
+                rawDataArray.append([voltageValue, currentMeasurement])
+                dataCurrent = np.array(rawDataArray)
 
-            # Set voltage and measure current
-            keithleyObject.write(f'smua.source.levelv = {voltage}\n')
-            keithleyObject.write('smua.source.output = smua.OUTPUT_ON\n')
-            keithleyObject.write('print(smua.measure.i())\n')
-            currentMeasurement = float(keithleyObject.read())
-            keithleyObject.write('smua.source.output = smua.OUTPUT_OFF\n')
+                return dataCurrent
+        if modelNum==2400:
+            keithleyObject.write('SOUR:VOLT:LEV {:.3f}'.format(voltage))
+            rawData = keithleyObject.query_ascii_values('READ?')
+            rawDataArray = np.array(rawData)
+            for i in range(n-1):
+                rawData = keithleyObject.query_ascii_values('READ?')
+                rawDataArray = np.vstack((rawDataArray,rawData))
+            data = rawDataArray
+            if polarity == 'pin':
+                data[:,0:2] *= -1
+            return data
 
-            # Constructing each row: [sourced voltage, measured current]
-            # Adjusting the polarity of the measured data if necessary
-            voltageValue = -voltage if polarity == 'pin' else voltage
-            rawDataArray.append([voltageValue, currentMeasurement])
-
-    # Convert rawDataArray to a 2D NumPy array
-    dataCurrent = np.array(rawDataArray)
-
-    return dataCurrent
+    
 def takeIV(keithleyObject, minV=-0.2, maxV=1.2, stepV=0.1, delay=10, forw=1, polarity='pin', NPLC=1, Ilimit=100E-3):
     '''
     Takes an IV sweep from minV to maxV with stepV, measuring current at each step.
     Returns a numpy array with columns for voltage, current, resistance, time, and status.
     '''
-    delay /= 1000  # Convert delay from ms to seconds
+    delay /= 1000  
     rawDataArray = []
+    if modelNum==2600:
+        if polarity =='pin'and keithleyObject != 'Test':
+            minV, maxV = -maxV, -minV
+            forw = not forw
+            #check this
+        volts = np.arange(minV, maxV + stepV, stepV) if forw else np.arange(maxV, minV - stepV, -stepV)
+        start = datetime.datetime.now()
 
-    volts = np.arange(minV, maxV + stepV, stepV) if forw else np.arange(maxV, minV - stepV, -stepV)
-    start = datetime.datetime.now()
+        for volt in volts:
+            #if polarity == 'pin':
+            #    volt *= -1
+            #check this 
+            keithleyObject.write(f'smua.source.levelv = {volt}\nsmua.source.output = smua.OUTPUT_ON\n')
+            time.sleep(delay)  
+            keithleyObject.write('print(smua.measure.i())\n')
+            currentMeasurement = float(keithleyObject.read())
+            timeStamp = (datetime.datetime.now() - start).total_seconds()
+            resistance = 9.91e+37  
+            status = 0b00000000  
+            rawData = [volt, currentMeasurement, resistance, timeStamp, status]
+            rawDataArray.append(rawData)
+        keithleyObject.write('smua.source.output = smua.OUTPUT_OFF\n')
+        data = np.array(rawDataArray)
+        return data
+    if modelNum==2400:
+        if polarity =='pin'and keithleyObject != 'Test':
+            minV, maxV = -maxV, -minV
+            forw = not forw
+        if forw:
+            startV, stopV = minV, maxV
+        else:
+            startV, stopV = maxV, minV
+            stepV *= -1
+        n = round(1 + (stopV - startV) /stepV)
+        keithleyObject.timeout = 100000
+        # keithleyObject.write('*RST')
+        keithleyObject.write('SOUR:FUNC VOLT')
 
-    for volt in volts:
+        keithleyObject.write('SOUR:VOLT:STAR {:.3f}'.format(startV))
+        keithleyObject.write('SOUR:VOLT:STOP {:.3f}'.format(stopV))
+        keithleyObject.write('SOUR:VOLT:STEP {:.3f}'.format(stepV))
+        keithleyObject.write('SOUR:VOLT:MODE SWE')
+        keithleyObject.write('SOUR:SWE:RANG AUTO')
+        keithleyObject.write('SOUR:SWE:SPAC LIN')
+        keithleyObject.write('SOUR:SWE:POIN {:d}'.format(n))
+        keithleyObject.write('SOUR:DEL {:.3f}'.format(delay))
+        keithleyObject.write('SENS:FUNC "CURR"')
+        keithleyObject.write('SENS:CURR:PROT {:.3f}'.format(Ilimit))
+        keithleyObject.write('SENS:CURR:NPLC {:.3f}'.format(NPLC))
+        keithleyObject.write('TRIG:COUN {:d}'.format(n))
+        keithleyObject.write('SYST:TIME:RES')
+        keithleyObject.write('OUTP ON')
+        try:
+            rawData = keithleyObject.query_ascii_values('READ?')
+    #		print(type(rawData))
+        except:
+            print('VisaIOError, ', datetime.now().strftime("%H:%M:%S"))
+            rawData=[]
+            pass
+        keithleyObject.write('OUTP OFF')
+        data = np.reshape(rawData, (-1,5))
         if polarity == 'pin':
-            volt *= -1
-        # Set the voltage
-        keithleyObject.write(f'smua.source.levelv = {volt}\nsmua.source.output = smua.OUTPUT_ON\n')
-        time.sleep(delay)  # Wait for the delay period
+            data[:,0:2] *= -1
+        return data
 
-        # Measure the current
-        keithleyObject.write('print(smua.measure.i())\n')
-        currentMeasurement = float(keithleyObject.read())
-
-        # Timestamp and resistance are placeholders in this context
-        timeStamp = (datetime.datetime.now() - start).total_seconds()
-        resistance = 9.91e+37  # Placeholder for resistance
-        status = 0b00000000  # Placeholder for status
-
-        rawData = [volt, currentMeasurement, resistance, timeStamp, status]
-        rawDataArray.append(rawData)
-
-    keithleyObject.write('smua.source.output = smua.OUTPUT_OFF\n')
-
-    data = np.array(rawDataArray)
-    return data
 
 
 def setFrontTerminal(keithleyObject):
 	if keithleyObject != 'Test':
+        if modelNum==2400:
+            keithleyObject.write('ROUT:TERM FRON')
 		return("Feature Doesn't Exist on 2651A")
 
 def setRearTerminal(keithleyObject):
 	if keithleyObject != 'Test':
+        if modelNum==2400:
+            keithleyObject.write('ROUT:TERM REAR')
 		return("Feature Doesn't Exist on 2651A")
 
 
