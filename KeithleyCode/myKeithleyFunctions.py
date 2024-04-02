@@ -52,13 +52,15 @@ def connectToKeithley(keithleyAddress=['GPIB0::22::INSTR']):
         return [message, keithleyAddress[0]]
 
     success = 0
-    for item in keithleyAddress:
+    keithelyAddresses = ['ASRL13::INSTR','ASRL12::INSTR','ASRL11::INSTR','ASRL10::INSTR','ASRL9::INSTR','ASRL8::INSTR','ASRL7::INSTR','ASRL6::INSTR','ASRL5::INSTR','ASRL4::INSTR','ASRL3::INSTR','ASRL2::INSTR','ASRL1::INSTR','GPIB0::22::INSTR', 'GPIB0::23::INSTR']
+    for item in keithelyAddresses:
         try:
             global rm
             global modelNum
             rm = pyvisa.ResourceManager()
             print('Attempting to connect to keithley.')
-            keithleyObject = rm.open_resource('ASRL13::INSTR')
+            print(item)
+            keithleyObject = rm.open_resource(item)
             keithleyObject.baud_rate = 57600
             if keithleyObject.query('*IDN?\n').contains("Model 26"):
                 print("2600")
@@ -91,7 +93,6 @@ def connectToKeithley(keithleyAddress=['GPIB0::22::INSTR']):
         print('\nCheck connection with Keithley')
 
 
->>>>>>> 6c789364041268fbf7e9f2bd2efbaaf809376486
 def shutdownKeithley(keithley):
     if keithley == 'Test':
         print('Shutdown in Test Mode')
