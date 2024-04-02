@@ -1,4 +1,7 @@
 # Solar-Simulator-Software
+
+Based on https://github.com/JerWer/Solar-Simulator-Software/
+
 Python-based solar simulator software
 
 This is a solar simulator software that connects to a keithley 2400 sourcemeter and Keithley 2600 sourcemeters. 
