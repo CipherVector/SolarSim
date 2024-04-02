@@ -19,28 +19,6 @@ import time
 '''
 ###############
 def connectToKeithley(keithleyAddress=['GPIB0::22::INSTR']):
-<<<<<<< HEAD
-        global rm
-        global keithleyObject
-        keithleyObject = "Reals"
-        rm = pyvisa.ResourceManager()
-        keithley = rm.open_resource('ASRL13::INSTR')
-        keithley.baud_rate=57600
-        global modelNum
-        rm = pyvisa.ResourceManager()
-        print('Attempting to connect to keithley.')
-        for item in keithleyAddress:
-            keithleyObject = rm.open_resource('ASRL13::INSTR')
-            keithleyObject.baud_rate = 57600
-            print(keithleyObject.query('*IDN?\n'))
-
-            # if it is a 2600 series keithley
-            if "Model 26" in keithleyObject.query('*IDN?\n'):
-=======
-    '''
-    This creates a Keithley object with which to interact with.
-    Attempt to connect to a Keithley, then send an ID query to confirm connection. If this fails, send an error message to the terminal and terminate the program.
-    '''
     if keithleyAddress == ['Test']:
         message = 'Keithley Code running in Test Mode. All of the following data is generated not measured.'
         global datetime
@@ -80,50 +58,27 @@ def connectToKeithley(keithleyAddress=['GPIB0::22::INSTR']):
             global modelNum
             rm = pyvisa.ResourceManager()
             print('Attempting to connect to keithley.')
-            keithleyObject = rm.open_resource(item)
+            keithleyObject = rm.open_resource('ASRL13::INSTR')
             keithleyObject.baud_rate = 57600
-
-            # if it is a 2600 series keithley
             if keithleyObject.query('*IDN?\n').contains("Model 26"):
->>>>>>> 6c789364041268fbf7e9f2bd2efbaaf809376486
                 print("2600")
                 keithley.baud_rate = 57600
                 keithley.read_termination = '\n'
                 keithley.write('smua.reset()')  # Reset the instrument
                 keithley.write('smua.sense = smua.SENSE_REMOTE')  # Enable 4-wire sense
                 modelNum = 2600
-<<<<<<< HEAD
-                #print('Keithley setup done, ' + item)
-                #message = 'Keithley setup done, ' + item
                 return ["Success", keithley]
-     
-                success = 1
-            else:
-                if "Model 24" in keithleyObject.query('*IDN?\r'):
-=======
-                print('Keithley setup done, ' + item)
-                message = 'Keithley setup done, ' + item
                 success = 1
             else:
                 if keithleyObject.query('*IDN?\r').contains("Model 24"):
->>>>>>> 6c789364041268fbf7e9f2bd2efbaaf809376486
                     keithleyObject.read_termination = '\r'
                     print(keithleyObject.query('*IDN?\r'))
                     keithleyObject.write('*RST')
                     keithleyObject.write('SENS:FUNC:CONC OFF')
                     keithleyObject.write('SYST:RSEN ON')
                     keithleyObject.write('ROUT:TERM REAR')
-<<<<<<< HEAD
-                    #print('Keithley setup done, ' + item)
-                    #message = 'Keithley setup done, ' + item
                     modelNum = 2400
                     return ["Success", keithley]
-                    success = 1
-            
-=======
-                    print('Keithley setup done, ' + item)
-                    message = 'Keithley setup done, ' + item
-                    modelNum = 2400
                     success = 1
             break
         except:
