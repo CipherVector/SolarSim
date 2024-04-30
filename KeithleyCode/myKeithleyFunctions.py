@@ -7,6 +7,7 @@ from statistics import mean
 import datetime
 from scipy.interpolate import interp1d as interp
 import datetime
+import serial.tools.list_ports
 import time
 
 #####TO-DO#####
@@ -52,45 +53,44 @@ def connectToKeithley(keithleyAddress=['GPIB0::22::INSTR']):
         return [message, keithleyAddress[0]]
 
     success = 0
-    keithelyAddresses = ['ASRL13::INSTR','ASRL12::INSTR','ASRL11::INSTR','ASRL10::INSTR','ASRL9::INSTR','ASRL8::INSTR','ASRL7::INSTR','ASRL6::INSTR','ASRL5::INSTR','ASRL4::INSTR','ASRL3::INSTR','ASRL2::INSTR','ASRL1::INSTR','GPIB0::22::INSTR', 'GPIB0::23::INSTR']
-    for item in keithelyAddresses:
-        try:
-            global rm
-            global modelNum
-            rm = pyvisa.ResourceManager()
-            print('Attempting to connect to keithley.')
-            print(item)
-            keithleyObject = rm.open_resource(item)
-            keithleyObject.baud_rate = 57600
-            if keithleyObject.query('*IDN?\n').contains("Model 26"):
-                print("2600")
-                keithley.baud_rate = 57600
-                keithley.read_termination = '\n'
-                keithley.write('smua.reset()')  # Reset the instrument
-                keithley.write('smua.sense = smua.SENSE_REMOTE')  # Enable 4-wire sense
-                modelNum = 2600
-                return ["Success", keithley]
+    global rm
+    global modelNum
+    rm = pyvisa.ResourceManager()
+    print('Attempting to connect to keithley.')
+    global keithleyObject
+    comlist = serial.tools.list_ports.comports()
+    connected = []
+    for element in comlist:
+        connected.append(element.device)
+    print("Connected COM ports: " + str(connected))
+    for items in connected:  
+        keithleyObject = rm.open_resource(items)    
+        keithleyObject.baud_rate = 57600
+        if "Model 26" in keithleyObject.query('*IDN?\n'):
+            print("2600")
+            keithleyObject.read_termination = '\n'
+            keithleyObject.write('smua.reset()')  # Reset the instrument
+            keithleyObject.write('smua.sense = smua.SENSE_REMOTE')  # Enable 4-wire sense
+            modelNum = 2600
+            print("here")
+            return ["Success", keithleyObject]
+            success = 1
+        else:
+            if keithleyObject.query('*IDN?\r') in "Model 24":
+                keithleyObject.read_termination = '\r'
+                print(keithleyObject.query('*IDN?\r'))
+                keithleyObject.write('*RST')
+                keithleyObject.write('SENS:FUNC:CONC OFF')
+                keithleyObject.write('SYST:RSEN ON')
+                keithleyObject.write('ROUT:TERM REAR')
+                modelNum = 2400
+                print("here")
+                return ["Success", keithleyObject]
                 success = 1
-            else:
-                if keithleyObject.query('*IDN?\r').contains("Model 24"):
-                    keithleyObject.read_termination = '\r'
-                    print(keithleyObject.query('*IDN?\r'))
-                    keithleyObject.write('*RST')
-                    keithleyObject.write('SENS:FUNC:CONC OFF')
-                    keithleyObject.write('SYST:RSEN ON')
-                    keithleyObject.write('ROUT:TERM REAR')
-                    modelNum = 2400
-                    return ["Success", keithley]
-                    success = 1
-            break
-        except:
-            print('Could not establish connection with Keithley on: ' + item)
-            message = 'Could not establish connection with Keithley on: ' + item
-
-    if success:
-        return [message, keithleyObject]
-    else:
-        print('\nCheck connection with Keithley')
+        if success:
+            return [message, keithleyObject]
+        else:
+            print('\nCheck connection with Keithley')
 
 
 def shutdownKeithley(keithley):
