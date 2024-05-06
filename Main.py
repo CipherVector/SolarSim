@@ -215,7 +215,7 @@ class Main(QtWidgets.QMainWindow):
         self.ui.pushButton_PersoSequence.clicked.connect(lambda: self.LoadStartPersoSequence(self.keithleyObject))
         
         self.ui.doubleSpinBox_MeasuredDiodeCurrent.valueChanged.connect(self.adjustActIntensity)
-        
+
     def closeEvent(self, event):
         """ what happens when close the program"""
         
@@ -3864,6 +3864,13 @@ class ThreadtakeQSS(QThread):
         
         if window.w.ui.comboBox_QSS_ScanDir.currentText()=='Reverse':
             voltagelist=sorted(voltagelist,reverse=True)[1:]
+        global negativity
+        negativity = False
+        if window.w.ui.comboBox_QSS_Current.currentText()=='Negative':
+            negativity = True
+            # Convert current density values to their negative
+            print("NEGATIVE")
+
         # elapsed_timer = QtCore.QElapsedTimer()
         # elapsed_timer.start()
         for appliedvoltage in voltagelist:
@@ -3924,7 +3931,10 @@ class ThreadtakeQSS(QThread):
             currentden=1000*mean(dataCurrent[:,1])/pixarea #mA/cm2
             current=mean(dataCurrent[:,1]) #A
             currentlist.append(float(current))
-            currentdensitylist.append(float(currentden))
+            if negativity:
+                currentdensitylist.append(float(currentden) * -1)
+            else:
+                currentdensitylist.append(float(currentden))
             voltagelist.append(float(voltagefixed))  #mV
             powerlist.append(float(currentden*voltagefixed/1000)/Sunintensity)
             timelist.append(float(elapsed_timer.elapsed()/1000))

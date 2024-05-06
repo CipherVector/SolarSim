@@ -3167,6 +3167,13 @@
                   </property>
                  </widget>
                 </item>
+                <item row="10" column="0">
+                 <widget class="QLabel" name="label_100">
+                  <property name="text">
+                   <string>Current Output</string>
+                  </property>
+                 </widget>
+                </item>
                 <item row="9" column="1">
                  <widget class="QComboBox" name="comboBox_QSS_ScanDir">
                   <property name="styleSheet">
@@ -3180,6 +3187,23 @@
                   <item>
                    <property name="text">
                     <string>Forward</string>
+                   </property>
+                  </item>
+                 </widget>
+                </item>
+                 <item row="10" column="1">
+                 <widget class="QComboBox" name="comboBox_QSS_Current">
+                  <property name="styleSheet">
+                   <string notr="true">background-color: rgb(225, 225, 225);</string>
+                  </property>
+                  <item>
+                   <property name="text">
+                    <string>Positive</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>Negative</string>
                    </property>
                   </item>
                  </widget>
